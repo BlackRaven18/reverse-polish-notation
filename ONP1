@@ -22,6 +22,7 @@ double calculate_rpn_expression(char* exp);
 void print_result(struct stack_node* top, char* exp, double result);
 int priority(char c);
 void convert_to_rpn(char* exp);
+bool is_rpn(char* exp);
 
 
 
@@ -32,9 +33,23 @@ int main()
 {
     system("CHCP 1250 > NUL");
     char exp[SIZE];
-    enter_the_expression(exp);
-    convert_to_rpn(exp);
-    //calculate_rpn_expression(exp);
+    int i;
+    for (i = 0; i < 5; i++)
+    {
+        enter_the_expression(exp);
+        if (is_rpn(exp))
+        {
+            printf("Jest ONP\n");
+            calculate_rpn_expression(exp);
+        }
+        else
+        {
+            printf("NIE Jest ONP\n");
+            convert_to_rpn(exp);
+            calculate_rpn_expression(exp);
+        }
+    }
+
 
     return 0;
 }
@@ -77,7 +92,8 @@ void print_result(struct stack_node* top, char* exp, double result)
     printf("(ONP): ");
     while (exp[i] != '\0')
     {
-        printf("%c", exp[i]);
+        if(exp[i] != '\n')
+            printf("%c", exp[i]);
         i++;
     }
     printf(" = %lf\n", pop(&top));
@@ -88,7 +104,7 @@ void print_result(struct stack_node* top, char* exp, double result)
 double calculate_rpn_expression(char* exp)
 {
     struct stack_node* top = NULL;
-    char temp[SIZE];
+    char temp[SIZE + 1];
 
     memset(temp, 0, SIZE * sizeof(char));  //zerowanie tymczasowej tablicy przechowujacej liczbe
     unsigned int i = 0, counter = 0;
@@ -97,7 +113,7 @@ double calculate_rpn_expression(char* exp)
     {
         if (isdigit(exp[i]) || exp[i] == '.')
             temp[counter++] = exp[i];                       // przepisywanei cyfry do tablicy, ktora bedzie ją przechowywac
-        else if (exp[i] != '+' && exp[i] != '-' && exp[i] != '*' && exp[i] != '/' && exp[i] != '^' && strlen(temp) > 0)
+        else if (exp[i] != '+' && exp[i] != '-' && exp[i] != '*' && exp[i] != 'x' && exp[i] != '/' && exp[i] != '^' && strlen(temp) > 0)
         {
             temp_value = atof(temp);                        // zamiana liczby z ciagu znakow na liczbe
             printf("temp_value = %.4lf\n", temp_value);
@@ -122,6 +138,7 @@ double calculate_rpn_expression(char* exp)
                 printf("result = %lf\n", result);
                 push(&top, result);
                 break;
+            case 'x':
             case '*':
                 result = pop(&top) * pop(&top);
                 printf("result = %lf\n", result);
@@ -169,29 +186,39 @@ void convert_to_rpn(char* exp)
     memset(stack, 0, SIZE * sizeof(char));
     memset(exit, 0, SIZE * sizeof(char));
     int counter = 0, counter_2 = 0, i = 0;
-    char c;
+    bool is_number = true;
 
-    while (true)
+    for(i = 0; i < (int)strlen(exp); i++)
     {
-        c = exp[i++];
-        if (c == '\n')
+        if (exp[i] == '\n')
         {
-            while (counter)
-                exit[counter_2++] = stack[--counter];
+             while (counter)
+             {
+                 exit[counter_2++] = stack[--counter];
+                 exit[counter_2++] = ' ';
+             }
             break;
         }
+        
+        if (isdigit(exp[i]) && i + 1 < SIZE - 1 && isdigit(exp[i + 1]))
+            is_number = true;
+        else
+            is_number = false;
 
-        switch (c)
+
+        switch (exp[i])
         {
         case ' ':
-            exit[counter_2++] = c;
             break;
         case '(':
             stack[counter++] = '(';
             break;
         case ')':
             while (stack[counter - 1] != '(')
+            {
                 exit[counter_2++] = stack[--counter];
+                exit[counter_2++] = ' ';
+            }
             counter--;
             break;
         case '+':;
@@ -201,22 +228,54 @@ void convert_to_rpn(char* exp)
         case '^':
             while (counter)
             {
-                if (priority(c) == 3 || (priority(c) > priority(stack[counter - 1]))) break;
-                exit[counter_2++] = stack[--counter];
+                if (priority(exp[i]) == 3 || (priority(exp[i]) > priority(stack[counter - 1]))) break;
+                {
+                    exit[counter_2++] = stack[--counter];
+                    exit[counter_2++] = ' ';
+                }
             }
-            stack[counter++] = c;
+            stack[counter++] = exp[i];
             break;
         default:
-            exit[counter_2++] = c;
+            exit[counter_2++] = exp[i];
+            if(is_number == false)
+                 exit[counter_2++] = ' ';
             break;
         }
-
-
     }
 
     memset(exp, 0, SIZE * sizeof(char));
     strncpy_s(exp, SIZE * sizeof(char), exit, SIZE);
     printf("exp = %s\n", exp);
 
+}
+
+bool is_rpn(char* exp)
+{
+    int i = 0;
+    for (i = 0; i < (int)strlen(exp) - 1; i++)
+    {
+        if (exp[i] == '(')
+            return false;
+        else if (!isdigit(exp[i]))
+        {
+            switch (exp[i])
+            {
+            case ' ':
+                if (exp[i + 1] == ' ')
+                    break;
+                else if (!isdigit(exp[i + 1]))
+                    return false;
+                else
+                    return true;
+                break;
+            case '.': break;
+            default:
+                return false;
+                break;
+            }
+        }
+
+    }
 }
 
